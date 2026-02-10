@@ -8,6 +8,7 @@ require 'tuhil'
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
 vim.g.have_nerd_font = false
+vim.g.python3_host_prog = '/home/tuhil/.local/python'
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -585,9 +586,15 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
+        clangd = {},
         -- gopls = {},
-        -- pyright = {},
+        pyright = {
+          settings = {
+            python = {
+              pythonPath = vim.fn.expand '~/.local/bin/python',
+            },
+          },
+        },
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -784,6 +791,23 @@ require('lazy').setup({
     event = 'InsertEnter',
     config = true,
   },
+  -- {
+  --   'sphamba/smear-cursor.nvim',
+  --   opts = {
+  --     min_horizontal_distance_smear = 30,
+  --     min_vertical_distance_smear = 15,
+  --     legacy_computing_symbols_support = true,
+  --     smear_insert_mode = false,
+  --     time_interval = 7,
+  --     stiffness = 1,
+  --     never_draw_over_target = true,
+  --     trailing_stiffness = 0.7,
+  --   },
+  -- },
+  {
+    'nvim-lualine/lualine.nvim',
+    dependencies = { 'nvim-tree/nvim-web-devicons' },
+  },
 }, {
   ui = {
     -- If you are using a Nerd Font: set icons to an empty table which will use the
@@ -851,6 +875,79 @@ vim.cmd [[
 ]]
 
 vim.diagnostic.config { update_in_insert = true }
+
+vim.api.nvim_create_autocmd('LspAttach', {
+  callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
+    if not client or client.name ~= 'pyright' then
+      return
+    end
+
+    local python = vim.fn.expand '~/.local/bin/python'
+
+    client.settings = client.settings or {}
+    client.settings.python = client.settings.python or {}
+    client.settings.python.pythonPath = python
+
+    client:notify('workspace/didChangeConfiguration', { settings = nil })
+  end,
+})
+
+local custom_gruvbox = require'lualine.themes.gruvbox'
+
+custom_gruvbox.normal.c.bg = '#111115'
+custom_gruvbox.insert.c.bg = '#111115'
+custom_gruvbox.command.c.bg = '#111115'
+custom_gruvbox.visual.c.bg = '#111115'
+
+require('lualine').setup {
+  options = {
+    icons_enabled = true,
+    theme = custom_gruvbox,
+    component_separators = '',
+    section_separators = { left = '', right = '' },
+    globalstatus = true, -- one bar across the bottom
+  },
+
+  sections = {
+    lualine_a = {
+      {
+        'mode',
+        separator = { right = '' },
+        color = { fg = '#000000', bg = '#ffffff', gui = 'bold' },
+      },
+    },
+
+    lualine_b = {
+      {
+        'branch',
+        icon = '',
+        separator = { right = '' },
+        color = { fg = '#000000', bg = '#cccccc', gui = 'bold' },
+      },
+    },
+
+    lualine_c = {
+      {
+        'filename',
+        path = 1,
+        separator = { right = '' },
+        color = { fg = '#000000', bg = '#888888', gui = 'bold' },
+      },
+    },
+
+    lualine_x = {},
+    lualine_y = {},
+
+    lualine_z = {
+      {
+        'location',
+        separator = { left = ''},
+        color = { fg = '#000000', bg = '#ffffff', gui = 'bold' },
+      },
+    },
+  },
+}
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
